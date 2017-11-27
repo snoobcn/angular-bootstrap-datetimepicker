@@ -86,6 +86,8 @@
 
         minute: minuteModelFactory,
 
+        second: secondModelFactory,
+
         setTime: setTime
       }
 
@@ -295,7 +297,7 @@
         var result = {
           'previousView': 'hour',
           'currentView': 'minute',
-          'nextView': 'setTime',
+          'nextView': configuration.minView === 'minute' ? 'setTime' : 'second',
           'previousViewDate': new DateObject({
             utcDateValue: previousViewDate.valueOf(),
             display: selectedDate.format('lll')
@@ -313,6 +315,44 @@
             'active': hourMoment.format(minuteFormat) === activeFormat,
             'current': hourMoment.format(minuteFormat) === currentFormat,
             'display': hourMoment.format('LT'),
+            'utcDateValue': hourMoment.valueOf()
+          }
+
+          result.dates.push(new DateObject(dateValue))
+        }
+
+        return result
+      }
+
+      function secondModelFactory (milliseconds) {
+        var selectedDate = moment.utc(milliseconds).startOf('minute')
+        var previousViewDate = moment.utc(selectedDate).startOf('hour')
+
+        var secondFormat = 'YYYY-MM-DD H:mm:ss'
+        var activeFormat = formatValue(ngModelController.$modelValue, secondFormat)
+        var currentFormat = moment().format(secondFormat)
+
+        var result = {
+          'previousView': 'minute',
+          'currentView': 'second',
+          'nextView': 'setTime',
+          'previousViewDate': new DateObject({
+            utcDateValue: previousViewDate.valueOf(),
+            display: selectedDate.format('LTS')
+          }),
+          'leftDate': new DateObject({utcDateValue: moment.utc(selectedDate).subtract(1, 'minutes').valueOf()}),
+          'rightDate': new DateObject({utcDateValue: moment.utc(selectedDate).add(1, 'minutes').valueOf()}),
+          'dates': []
+        }
+
+        var limit = 60 / configuration.secondStep
+
+        for (var i = 0; i < limit; i += 1) {
+          var hourMoment = moment.utc(selectedDate).add(i * configuration.secondStep, 'second')
+          var dateValue = {
+            'active': hourMoment.format(secondFormat) === activeFormat,
+            'current': hourMoment.format(secondFormat) === currentFormat,
+            'display': hourMoment.format('LTS'),
             'utcDateValue': hourMoment.valueOf()
           }
 
@@ -449,6 +489,7 @@
       configureOn: null,
       dropdownSelector: null,
       minuteStep: 5,
+      secondStep: 5,
       minView: 'minute',
       modelType: 'Date',
       parseFormat: 'YYYY-MM-DDTHH:mm:ss.SSSZZ',
@@ -503,6 +544,7 @@
         'configureOn',
         'dropdownSelector',
         'minuteStep',
+        'secondStep',
         'minView',
         'modelType',
         'parseFormat',
@@ -520,7 +562,7 @@
       }
 
       // Order of the elements in the validViews array is significant.
-      var validViews = ['minute', 'hour', 'day', 'month', 'year']
+      var validViews = ['second', 'minute', 'hour', 'day', 'month', 'year']
 
       if (validViews.indexOf(configuration.startView) < 0) {
         throw new Error('invalid startView value: ' + configuration.startView)
@@ -539,6 +581,12 @@
       }
       if (configuration.minuteStep <= 0 || configuration.minuteStep >= 60) {
         throw new Error('minuteStep must be greater than zero and less than 60')
+      }
+      if (!angular.isNumber(configuration.secondStep)) {
+        throw new Error('secondStep must be numeric')
+      }
+      if (configuration.secondStep <= 0 || configuration.secondStep >= 60) {
+        throw new Error('secondStep must be greater than zero and less than 60')
       }
       if (configuration.configureOn !== null && !angular.isString(configuration.configureOn)) {
         throw new Error('configureOn must be a string')
@@ -575,4 +623,4 @@
       }
     }
   }
-})); // eslint-disable-line semi
+}))
